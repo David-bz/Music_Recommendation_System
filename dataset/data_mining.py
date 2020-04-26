@@ -5,7 +5,12 @@ import pylast
 import numpy as np
 import time
 import threading
+import multiprocessing
 import logging
+import signal
+from contextlib import contextmanager
+
+
 
 def lastfm_get(payload):
     API_KEY = '565547727218540858d3a20274c021d2'
@@ -298,6 +303,72 @@ def get_users_recent_songs(threads_num):
     songs.dump_data()
     recent.dump_data()
 
+class TimeoutException(Exception): pass
+
+@contextmanager
+def time_limit(seconds):
+    def signal_handler(signum, frame):
+        raise TimeoutException("Timed out!")
+
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)
+
+class splitted_songs_wrapper:
+    def __init__(self, df):
+        self.df = df
+
+    def get_track_info(self, split_id):
+        net = init_lastfm()
+        total_time = 0
+        num_entries = len(self.df)
+        for idx in range(num_entries):
+            st = time.time()
+            title, artist = self.df.iloc[idx][['name', 'artist']]
+            track_info = None
+            try:
+                with time_limit(5):
+                    track_info = net.get_track(artist, title).get_info()
+            except:
+                print("subprocess {} has Timed out! at {}".format(split_id, self.df.iloc[idx].id))
+                continue
+            if track_info != None:
+                self.df.at[self.df.iloc[idx].id, 3:] = [track_info['album']['name'], track_info['duration'], track_info['listeners'],
+                                     track_info['playcount'], track_info['artist']['listeners'],
+                                     track_info['artist']['playcount'],
+                                     track_info['album']['listeners'], track_info['album']['playcount']]
+
+
+            total_time += time.time() - st
+            if idx % 100 == 0:
+                avg_time = total_time / (idx + 1)
+                time_left = (num_entries - idx) * avg_time / (60*60*24)
+                print("subprocess_id: {}, idx {} out of {} avg_time: {}, est_time_left: {}".format(split_id, idx, num_entries, avg_time, time_left))
+            if idx % (num_entries // 100) == 0:
+                pd.DataFrame.to_csv(self.df, './entities/songs_metadata' + str(split_id) +'.csv.zip', index=False, header=True, compression='zip')
+
+
+
+
+def get_song_metadata(num_threads):
+    songs = Songs('./entities/songs.csv.zip').songs
+    songs = songs.reindex(columns=[*songs.columns.tolist(), 'album', 'track_duration', 'track_listeners', 'track_playcount',
+                                   'artist_listeners', 'artist_playcount', 'album_listeners', 'album_playcount'])
+    total_tracks = songs.shape[0]
+    split_songs = [splitted_songs_wrapper(df) for df in np.array_split(songs, num_threads)]
+    for split_id, split_df in enumerate(split_songs):
+        subprocess = multiprocessing.Process(target=split_df.get_track_info, args=(split_id,))
+        subprocess.start()
+    while (len(multiprocessing.active_children()) > 0):
+        print("there are {} active processes".format(len(multiprocessing.active_children())))
+        time.sleep(600)
+
+
+
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -316,7 +387,12 @@ logging.basicConfig(
 )
 
 
-get_users_recent_songs(5)
+if __name__ == '__main__':
+    get_song_metadata(8)
+
+
+
+
 
 # def foo(sl):
 #     start = time.time()

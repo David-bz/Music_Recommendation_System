@@ -1,4 +1,4 @@
-name: ml_course
+name: music-reco
 channels:
   - anaconda
   - conda-forge
