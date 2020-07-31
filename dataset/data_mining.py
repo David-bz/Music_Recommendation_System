@@ -350,9 +350,6 @@ class splitted_songs_wrapper:
             if idx % (num_entries // 100) == 0:
                 pd.DataFrame.to_csv(self.df, './entities/songs_metadata' + str(split_id) +'.csv.zip', index=False, header=True, compression='zip')
 
-
-
-
 def get_song_metadata(num_threads):
     songs = Songs('./entities/songs.csv.zip').songs
     songs = songs.reindex(columns=[*songs.columns.tolist(), 'album', 'track_duration', 'track_listeners', 'track_playcount',
@@ -366,7 +363,8 @@ def get_song_metadata(num_threads):
         print("there are {} active processes".format(len(multiprocessing.active_children())))
         time.sleep(600)
 
-
+def filter_songs():
+    df = pd.read_csv('./entities/all_unique.csv.zip', header=0, compression='zip')
 
 
 logging.basicConfig(
@@ -385,6 +383,7 @@ logging.basicConfig(
         logging.StreamHandler()
     ]
 )
+
 
 
 if __name__ == '__main__':
