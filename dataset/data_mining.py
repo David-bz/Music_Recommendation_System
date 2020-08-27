@@ -4,6 +4,7 @@ import requests
 import pylast
 import numpy as np
 import time
+import math
 import threading
 import multiprocessing
 import logging
@@ -350,6 +351,41 @@ class splitted_songs_wrapper:
             if idx % (num_entries // 100) == 0:
                 pd.DataFrame.to_csv(self.df, './entities/songs_metadata' + str(split_id) +'.csv.zip', index=False, header=True, compression='zip')
 
+    def repair_null_rows(self, split_id):
+        net = init_lastfm()
+        total_time = 0
+        num_entries = len(self.df)
+        for idx in range(num_entries):
+            st = time.time()
+            title, artist = self.df.iloc[idx][['name', 'artist']]
+            track_info = None
+            try:
+                track = net.get_track(artist, title)
+                corrected_name = track.get_correction()
+                corrected_artist_name = track.get_artist().get_correction()
+                if title != corrected_name or artist != corrected_artist_name:
+                    track = net.get_track(corrected_artist_name, corrected_name)
+                track_info = track.get_info()
+            except:
+                print("subprocess {} has Timed out! at {}".format(split_id, self.df.iloc[idx].id))
+                continue
+            if track_info != None:
+                self.df.at[self.df.iloc[idx].id, 3:] = [track_info['album']['name'], track_info['duration'], track_info['listeners'],
+                                     track_info['playcount'], track_info['artist']['listeners'],
+                                     track_info['artist']['playcount'],
+                                     track_info['album']['listeners'], track_info['album']['playcount']]
+
+
+            total_time += time.time() - st
+            if idx % 100 == 0:
+                avg_time = total_time / (idx + 1)
+                time_left = (num_entries - idx) * avg_time / (60*60*24)
+                print("subprocess_id: {}, idx {} out of {} avg_time: {}, est_time_left: {}".format(split_id, idx, num_entries, avg_time, time_left))
+            if idx % (num_entries // 100) == 0:
+                pd.DataFrame.to_csv(self.df, './entities/songs_repair' + str(split_id) +'.csv.zip', index=False, header=True, compression='zip')
+
+
+
 def get_song_metadata(num_threads):
     songs = Songs('./entities/songs.csv.zip').songs
     songs = songs.reindex(columns=[*songs.columns.tolist(), 'album', 'track_duration', 'track_listeners', 'track_playcount',
@@ -365,6 +401,77 @@ def get_song_metadata(num_threads):
 
 def filter_songs():
     df = pd.read_csv('./entities/all_unique.csv.zip', header=0, compression='zip')
+
+
+def merge_dataset_row(new_dataset_row, old_dataset_row):
+    # album name
+    if math.isnan(new_dataset_row[0]):    new_dataset_row[0] = old_dataset_row[0]
+    list(map(lambda x : 0 if math.isnan(x) else x, new_dataset_row[1:]))
+    list(map(lambda x: 0 if math.isnan(x) else x, old_dataset_row[1:]))
+    # track duration
+    new_dataset_row[1] = max(new_dataset_row[1], old_dataset_row[1])
+    # all other metrics
+    for i in range(2, len(new_dataset_row)):
+        if new_dataset_row[i] == -1:
+            new_dataset_row[i] = old_dataset_row[i]
+        elif new_dataset_row[i] != old_dataset_row[i]:
+            new_dataset_row[i] += old_dataset_row[i]
+    return new_dataset_row
+
+def dataset_correction():
+    net = init_lastfm()
+    combined = pd.read_csv('all_songs.csv.zip', compression='zip')
+    combined.drop(combined.columns[0], axis=1, inplace=True)
+    corrected_names_map = dict()
+    old_id_to_new_id = dict()
+    triplets = combined[['id', 'name', 'artist']].values
+    new_dataset = []
+    timed_out = []
+
+    for old_idx, track_name, artist_name in triplets:
+        # try:
+        # with time_limit(50):
+        track = net.get_track(artist_name, track_name)
+        if combined.iloc[old_idx, :].isnull().sum() > 0:
+            track_info = track.get_info()
+            if track_info != None:
+                combined.at[combined.iloc[old_idx].id, 3:] = [track_info['album']['name'], track_info['duration'],
+                                                              track_info['listeners'],
+                                                              track_info['playcount'],
+                                                              track_info['artist']['listeners'],
+                                                              track_info['artist']['playcount'],
+                                                              track_info['album']['listeners'],
+                                                              track_info['album']['playcount']]
+
+        corrected_track_name = track.get_correction()
+        corrected_artist_name = track.get_artist().get_correction()
+        if (corrected_track_name, corrected_artist_name) in corrected_names_map:
+            new_id = corrected_names_map[(corrected_track_name, corrected_artist_name)]
+            new_dataset[new_id][2:] = merge_dataset_row(new_dataset[new_id][2:], list(combined.iloc[old_idx, 3:]))
+        else:
+            new_id = len(new_dataset)
+            corrected_names_map[(corrected_track_name, corrected_artist_name)] = new_id
+            new_dataset.append([corrected_track_name, corrected_artist_name] + list(combined.iloc[old_idx, 3:]))
+        old_id_to_new_id[old_idx] = new_id
+
+        # except:
+        #     print("Id {} has Timed out!".format(old_idx))
+        #     timed_out.append(old_idx)
+        #     continue
+
+        print("old_id: {}, new_id: {}".format(old_idx, new_id))
+
+def repair_null_rows(num_threads):
+    combined = pd.read_csv('all_songs.csv.zip', compression='zip')
+    combined.drop(combined.columns[0], axis=1, inplace=True)
+    combined = combined[combined.isnull().any(axis=1)]
+    split_songs = [splitted_songs_wrapper(df) for df in np.array_split(combined, 16)]
+    for split_id, split_df in enumerate(split_songs):
+        subprocess = multiprocessing.Process(target=split_df.repair_null_rows, args=(split_id,))
+        subprocess.start()
+    while (len(multiprocessing.active_children()) > 0):
+        print("there are {} active processes".format(len(multiprocessing.active_children())))
+        time.sleep(600)
 
 
 logging.basicConfig(
@@ -387,7 +494,7 @@ logging.basicConfig(
 
 
 if __name__ == '__main__':
-    get_song_metadata(8)
+    repair_null_rows(16)
 
 
 
