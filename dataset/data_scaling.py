@@ -30,30 +30,72 @@ class Dataset:
 
 
     def scale_tracks(self):
-        pass
+        self.scale_track_duration()
+        self.scale_track_listeners()
+        self.scale_track_playcount()
+        self.scale_track_artist_listeners()
+        self.scale_track_artist_playcount()
+        self.scale_track_album_listeners()
+        self.scale_track_album_playcount()
 
-    def show_users_distributions(self):
-        for feature in self.users.columns:
+    def perform_log_scale(self, feature):
+        power_scaler = PowerTransformer(method='yeo-johnson')
+        data = self.tracks[feature].values.reshape(-1, 1)
+        power_scaler = power_scaler.fit(data)
+        data = power_scaler.transform(data)
+        if self.verbose:
+            hist, bins, _ = plt.hist(data, bins=50)
+            plt.savefig('./distributions/tracks/' + feature + '_after_scale.png')
+            plt.show()
+        self.scalers['tracks'][feature] = power_scaler
+        self.tracks[feature] = data
+
+
+    def scale_track_duration(self):
+        # consider split to zeros and the rest
+        self.perform_log_scale('track_duration')
+
+    def scale_track_listeners(self):
+        self.perform_log_scale('track_listeners')
+
+    def scale_track_playcount(self):
+        self.perform_log_scale('track_playcount')
+
+    def scale_track_artist_listeners(self):
+        self.perform_log_scale('artist_listeners')
+
+    def scale_track_artist_playcount(self):
+        self.perform_log_scale('artist_playcount')
+
+    def scale_track_album_listeners(self):
+        # consider split to zeros and the rest
+        self.perform_log_scale('album_listeners')
+
+    def scale_track_album_playcount(self):
+        # consider split to zeros and the rest
+        self.perform_log_scale('album_playcount')
+
+    def show_table_distributions(self, table, table_name):
+        for feature in table.columns:
             try:
-                ax = self.users[feature].plot.hist(bins=50)
+                ax = table[feature].plot.hist(bins=50)
                 plt.xlabel(feature)
-                plt.savefig('./users_distributions/' + feature + '.png')
+                plt.savefig('./distributions/' + table_name + '/' + feature + '_before_scale.png')
                 plt.show()
             except TypeError:
                 print(feature)
                 continue
 
+    def show_users_distributions(self):
+        self.show_table_distributions(self.users, 'users')
 
+    def show_tracks_distributions(self):
+        self.show_table_distributions(self.tracks, 'tracks')
 
 if __name__ == '__main__':
     data = Dataset()
-    data.scale_users()
-
-
-
-
-
-
+    data.show_tracks_distributions()
+    data.scale_tracks()
 
 
 
