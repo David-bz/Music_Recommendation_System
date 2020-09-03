@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import StandardScaler, PowerTransformer, KBinsDiscretizer
+from sklearn.preprocessing import StandardScaler, PowerTransformer, KBinsDiscretizer, MinMaxScaler
 from time import gmtime
+import pickle
 
 class Dataset:
     def __init__(self, verbose = False):
@@ -10,6 +11,22 @@ class Dataset:
         self.users = pd.read_csv('./entities/users.csv.zip', index_col=0, compression='zip')
         self.scalers = {'users' : {}, 'tracks' : {}}
         self.verbose = verbose
+        np.random.seed(1)
+
+    def scale(self, save=True, verbose=False):
+        if verbose: self.verbose = True
+        self.scale_users()
+        self.scale_tracks()
+        if save:
+            self.save_dataset()
+
+    def save_dataset(self):
+        pd.DataFrame.to_csv(self.users, './entities/scaled_users.csv.zip', index=False, header=True, compression='zip')
+        pd.DataFrame.to_csv(self.tracks, './entities/scaled_tracks.csv.zip', index=False, header=True, compression='zip')
+        with open('./entities/scalers.pickle', 'wb+') as handler:
+            pickle.dump(self.scalers, handler, protocol=pickle.HIGHEST_PROTOCOL)
+
+
 
     def plot_and_save(self, data, feature_name, bins = 50, period='before'):
         hist, bins, _ = plt.hist(data, bins=bins)
@@ -35,7 +52,7 @@ class Dataset:
         power_scaler = PowerTransformer(method='box-cox').fit(data)
         playcount = power_scaler.transform(data)
         if self.verbose: self.plot_and_save(playcount, 'playcount', period='after')
-
+        self.users['playcount'] = playcount
         self.scalers['users']['playcount'] = power_scaler
 
     def scale_users_loved_tracks(self):
@@ -44,6 +61,8 @@ class Dataset:
         power_scaler = PowerTransformer(method='yeo-johnson').fit(data)
         loved_tracks = power_scaler.transform(data)
         if self.verbose: self.plot_and_save(loved_tracks, 'loved_tracks', period='after')
+        self.users['loved_tracks'] = loved_tracks
+        self.scalers['users']['loved_tracks'] = power_scaler
 
     def scale_users_artists_count(self):
         data = self.users['artists_count'].values.reshape(-1, 1)
@@ -51,11 +70,19 @@ class Dataset:
         power_scaler = PowerTransformer(method='box-cox').fit(data)
         artists_count = power_scaler.transform(data)
         if self.verbose: self.plot_and_save(artists_count, 'artists_count', period='after')
+        self.users['artists_count'] = artists_count
+        self.scalers['users']['artists_count'] = power_scaler
 
     def scale_registration_year(self):
         # data = self.users['registration_unix_time'].apply(lambda year : gmtime(year).tm_year).values.reshape(-1, 1)
         data = self.users['registration_unix_time'].values.reshape(-1, 1)
-        if self.verbose:  self.plot_and_save(data, 'registration_unix_time', bins = 20)
+        if self.verbose:  self.plot_and_save(data, 'registration_unix_time', bins = 100)
+        # power_scaler = PowerTransformer(method='box-cox').fit(data)
+        scaler = StandardScaler(with_mean=True, with_std=True).fit(data)
+        reg_year = scaler.transform(data)
+        if self.verbose:  self.plot_and_save(reg_year , 'registration_unix_time', period='after', bins = 100)
+        self.users['registration_unix_time'] = reg_year
+        self.scalers['users']['registration_unix_time'] = scaler
 
     def scale_last_activity_year(self):
         indices_to_impute = self.users[self.users.last_activity_unix_time < 10000000].index.values
@@ -65,12 +92,24 @@ class Dataset:
 
         # data = self.users['last_activity_unix_time'].apply(lambda year : gmtime(year).tm_year).values.reshape(-1, 1)
         data = self.users['last_activity_unix_time'].values.reshape(-1, 1)
-        if self.verbose:  self.plot_and_save(data, 'last_activity_unix_time', bins = 20)
+        if self.verbose:  self.plot_and_save(data, 'last_activity_unix_time', bins = 100)
+        # power_scaler = PowerTransformer(method='box-cox').fit(data)
+        scaler = StandardScaler(with_mean=True, with_std=True).fit(data)
+        last_year = scaler.transform(data)
+        if self.verbose:  self.plot_and_save(last_year  , 'last_activity_unix_time', period='after', bins = 100)
+        self.users['last_activity_unix_time'] = last_year
+        self.scalers['users']['last_activity_unix_time'] = scaler
 
     def scale_activity_period_days(self):
-        self.users['activity_period_days'] = ((self.users['last_activity_unix_time'] - self.users['registration_unix_time'])/(60*60*24)).astype(int)
-        data = self.users['activity_period_days']
+        self.users['activity_period_days'] = ((self.users['last_activity_unix_time'] - self.users['registration_unix_time'])/(60*60*24))
+        data = self.users['activity_period_days'].values.reshape(-1 ,1)
         if self.verbose:  self.plot_and_save(data, 'activity_period_days')
+        scaler = MinMaxScaler().fit(data)
+        activity_in_days = scaler.transform(data)
+        if self.verbose:  self.plot_and_save(activity_in_days, 'activity_period_days', period='after')
+        self.users['activity_period_days'] = activity_in_days
+        self.users.drop('activity_period_unix_time', axis = 1) # Unnecessary due to scaling
+        self.scalers['users']['activity_period_days'] = scaler
 
     def scale_tracks(self):
         self.scale_track_duration()
@@ -80,6 +119,14 @@ class Dataset:
         self.scale_track_artist_playcount()
         self.scale_track_album_listeners()
         self.scale_track_album_playcount()
+
+    def impute_from_feature_distribution(self, feature, missing_value):
+        missing = self.tracks[feature] == missing_value
+        not_missing = self.tracks[feature][missing == False]
+        std = not_missing.std()
+        mean = not_missing.mean()
+        self.tracks[feature] = self.tracks[feature].apply(
+            lambda val: val if val != missing_value else np.random.normal(mean, std, 1)[0])
 
     def perform_log_scale(self, feature):
         power_scaler = PowerTransformer(method='yeo-johnson')
@@ -118,6 +165,7 @@ class Dataset:
 
     def scale_track_duration(self):
         # consider split to zeros and the rest
+        self.impute_from_feature_distribution('track_duration', 0)
         self.perform_log_scale('track_duration')
 
     def scale_track_listeners(self):
@@ -161,7 +209,7 @@ class Dataset:
 
 if __name__ == '__main__':
     data = Dataset()
-    data.scale_users(True)
+    data.scale()
 
 
 
