@@ -4,11 +4,16 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler, PowerTransformer, KBinsDiscretizer, MinMaxScaler
 from time import gmtime
 import pickle
+import os
 
 class Dataset:
     def __init__(self, verbose = False):
-        self.tracks =  pd.read_csv('./dataset/entities/tracks.csv.zip', compression='zip')
-        self.users = pd.read_csv('./dataset/entities/users.csv.zip', index_col=0, compression='zip')
+        if os.path.split(os.getcwd())[-1] == 'dataset':
+            self.init_dir = './'
+        else:
+            self.init_dir = './dataset/'
+        self.tracks =  pd.read_csv(self.init_dir + 'entities/tracks.csv.zip', compression='zip')
+        self.users = pd.read_csv(self.init_dir + 'entities/users.csv.zip', index_col=0, compression='zip')
         self.scalers = {'users' : {}, 'tracks' : {}}
         self.verbose = verbose
         np.random.seed(1)
@@ -21,9 +26,9 @@ class Dataset:
             self.save_dataset()
 
     def save_dataset(self):
-        pd.DataFrame.to_csv(self.users, './dataset/entities/scaled_users.csv.zip', index=False, header=True, compression='zip')
-        pd.DataFrame.to_csv(self.tracks, './dataset/entities/scaled_tracks.csv.zip', index=False, header=True, compression='zip')
-        with open('./dataset/entities/scalers.pickle', 'wb+') as handler:
+        pd.DataFrame.to_csv(self.users, self.init_dir + 'entities/scaled_users.csv.zip', index=False, header=True, compression='zip')
+        pd.DataFrame.to_csv(self.tracks, self.init_dir + 'entities/scaled_tracks.csv.zip', index=False, header=True, compression='zip')
+        with open(self.init_dir + 'entities/scalers.pickle', 'wb+') as handler:
             pickle.dump(self.scalers, handler, protocol=pickle.HIGHEST_PROTOCOL)
 
 
@@ -31,7 +36,7 @@ class Dataset:
     def plot_and_save(self, data, feature_name, bins = 50, period='before'):
         hist, bins, _ = plt.hist(data, bins=bins)
         plt.xlabel(feature_name)
-        plt.savefig('./dataset/distributions/users/' + feature_name + '_' + period + '_scale.png')
+        plt.savefig(self.init_dir + 'distributions/users/' + feature_name + '_' + period + '_scale.png')
         plt.show()
 
     def scale_users(self, verbose = False):
@@ -138,7 +143,7 @@ class Dataset:
         data = power_scaler.transform(data)
         if self.verbose:
             hist, bins, _ = plt.hist(data, bins=50)
-            plt.savefig('./dataset/distributions/tracks/' + feature + '_after_scale.png')
+            plt.savefig(self.init_dir + 'distributions/tracks/' + feature + '_after_scale.png')
             plt.show()
         self.scalers['tracks'][feature] = power_scaler
         self.tracks[feature] = data
@@ -198,7 +203,7 @@ class Dataset:
             try:
                 ax = table[feature].plot.hist(bins=50)
                 plt.xlabel(feature)
-                plt.savefig('./dataset/distributions/' + table_name + '/' + feature + '_before_scale.png')
+                plt.savefig(self.init_dir + 'distributions/' + table_name + '/' + feature + '_before_scale.png')
                 plt.show()
             except TypeError:
                 print(feature)
