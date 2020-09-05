@@ -99,15 +99,13 @@ class userTrackMatrix:
     def get_mf_score(self, user, track):
         return sum([self.MF_users[user, i]*self.MF_tracks[i, track] for i in range(self.n_components)])
 
+    def get_user_related_tracks(self, user):
+        # related_tracks contains all the tracks that this user loved / played
+        related_tracks = list(self.played[self.played.user_id == user].track_id.values)
+        related_tracks = related_tracks + list(self.loved[self.loved.user_id == user].track_id.values)
+        return related_tracks
+
     def evaluate_mf(self, samples = 200):
-        """
-            We trying to estimate the quality of the MF.
-            We sample `samples` users, for each user:
-                we calculate for each track the MF score,
-                we sort the
-        :param samples: number of users to sample
-        :return:
-        """
         count = 0
         sum = 0
         for user in np.random.choice(self.shape[0], samples):
@@ -116,8 +114,7 @@ class userTrackMatrix:
             # positions[i] is the i'th worst track by this user
             positions = np.argsort(scores)
             # related_tracks contains all the tracks that this user loved / played
-            related_tracks = list(self.played[self.played.user_id == user].track_id.values)
-            related_tracks = related_tracks + list(self.loved[self.loved.user_id == user].track_id.values)
+            related_tracks = self.get_user_related_tracks(user)
 
             # calculate the average positions of the related tracks
             avg_position = 0

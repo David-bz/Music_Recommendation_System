@@ -26,11 +26,18 @@ class Dataset:
             self.save_dataset()
 
     def save_dataset(self):
-        pd.DataFrame.to_csv(self.users, self.init_dir + 'entities/scaled_users.csv.zip', index=False, header=True, compression='zip')
-        pd.DataFrame.to_csv(self.tracks, self.init_dir + 'entities/scaled_tracks.csv.zip', index=False, header=True, compression='zip')
+        self.scaled_users = self.users[self.users.columns[1:]] # exclude lastfm_username
+        self.scaled_tracks = self.tracks[self.tracks.columns[3:]] # exclude track name, artist, and album
+        pd.DataFrame.to_csv(self.scaled_users, self.init_dir + 'entities/scaled_users.csv.zip', index=False, header=True, compression='zip')
+        pd.DataFrame.to_csv(self.scaled_tracks, self.init_dir + 'entities/scaled_tracks.csv.zip', index=False, header=True, compression='zip')
         with open(self.init_dir + 'entities/scalers.pickle', 'wb+') as handler:
             pickle.dump(self.scalers, handler, protocol=pickle.HIGHEST_PROTOCOL)
 
+    def load_scaled_dataset(self):
+        self.scaled_users = pd.read_csv(self.init_dir + 'entities/scaled_users.csv.zip', compression='zip', header=0)
+        self.scaled_tracks = pd.read_csv(self.init_dir + 'entities/scaled_tracks.csv.zip', compression='zip', header=0)
+        # TODO: fix this call
+        # self.scalers = pickle.load(open(self.init_dir + 'entities/scalers.pickle', 'wb+'))
 
 
     def plot_and_save(self, data, feature_name, bins = 50, period='before'):
