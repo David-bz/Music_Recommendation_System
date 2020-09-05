@@ -76,7 +76,7 @@ class MLDataset:
     def load(self, path='ml_dataset.csv.zip'):
         self.loved = pd.read_csv(self.init_dir + path, header=0, compression='zip')
 
-    def build_dataset(self, positive_portion=0.2, samples_mum=10000, dump=True):
+    def build_dataset(self, positive_portion=0.25, samples_mum=40000, dump=True):
         samples = self.get_positive_samples(int(samples_mum * positive_portion))
         samples += self.get_non_positive_samples(samples_mum - len(samples))
         np.random.shuffle(samples)
