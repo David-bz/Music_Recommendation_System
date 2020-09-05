@@ -115,14 +115,19 @@ class userTrackMatrix:
             scores = np.dot(self.MF_users[235, :], self.MF_tracks)
             # positions[i] is the i'th worst track by this user
             positions = np.argsort(scores)
-            # related_tracks contains the loved / played user tracks
+            # related_tracks contains all the tracks that this user loved / played
             related_tracks = list(self.played[self.played.user_id == user].track_id.values)
             related_tracks = related_tracks + list(self.loved[self.loved.user_id == user].track_id.values)
 
+            # calculate the average positions of the related tracks
             avg_position = 0
             related_tracks_len = len(related_tracks)
             for track in related_tracks:
                 avg_position += (np.argwhere(positions == track)[0][0] / related_tracks_len)
+            # the score of this user is average positions divide the number of tracks
+            # so if avg_position is 500K, divide it by 609K the score is ~0.82
+            # so if avg_position is 300K, divide it by 609K the score is ~0.49
+            # remember that `positions` is sorted from the worst to the best track
             user_score = avg_position / self.shape[1]
 
             if self.verbose:
@@ -140,12 +145,10 @@ if __name__ == '__main__':
     user_track_matrix = userTrackMatrix()
 
     # create a trivial score function - for each event increase the score by 1
-    # trivial = lambda object, i, j: object.mat[i, j] + 1
-    #
-    # user_track_matrix.process_loved_events(trivial)
-    # user_track_matrix.process_played_events(trivial)
-    # user_track_matrix.matrix_factorize()
-    # user_track_matrix.dump()
-    user_track_matrix.load()
+    trivial = lambda object, i, j: object.mat[i, j] + 1
+
+    user_track_matrix.process_loved_events(trivial)
+    user_track_matrix.process_played_events(trivial)
+    user_track_matrix.matrix_factorize()
     user_track_matrix.evaluate_mf()
-    print(0)
+    user_track_matrix.dump()
