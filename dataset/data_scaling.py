@@ -3,19 +3,21 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler, PowerTransformer, KBinsDiscretizer, MinMaxScaler
 from time import gmtime
+from utils import generate_path
 import pickle
 import os
 
 def get_working_dir():
-    tokens = os.getcwd().split('/')
+    sep = os.path.sep
+    tokens = os.getcwd().split(sep)
+    print(tokens)
     work_dir_idx = tokens.index('Music_Recommendation_System') + 1
-    return os.path.join("/", *tokens[:work_dir_idx]) + '/'
+    return os.path.join("/", *tokens[:work_dir_idx]) + sep
 
 class Dataset:
     def __init__(self, verbose = False):
-        self.init_dir = get_working_dir() + '/dataset/'
-        self.tracks = pd.read_csv(self.init_dir + 'entities/tracks.csv.zip', compression='zip')
-        self.users = pd.read_csv(self.init_dir + 'entities/users.csv.zip', index_col=0, compression='zip')
+        self.tracks = pd.read_csv(generate_path('/dataset/entities/tracks.csv.zip'), compression='zip')
+        self.users = pd.read_csv(generate_path('/dataset/entities/users.csv.zip'), index_col=0, compression='zip')
         self.scalers = {'users' : {}, 'tracks' : {}}
         self.verbose = verbose
         np.random.seed(1)
@@ -30,14 +32,14 @@ class Dataset:
     def save_dataset(self):
         self.scaled_users = self.users[self.users.columns[1:]] # exclude lastfm_username
         self.scaled_tracks = self.tracks[self.tracks.columns[3:]] # exclude track name, artist, and album
-        pd.DataFrame.to_csv(self.scaled_users, self.init_dir + 'entities/scaled_users.csv.zip', index=False, header=True, compression='zip')
-        pd.DataFrame.to_csv(self.scaled_tracks, self.init_dir + 'entities/scaled_tracks.csv.zip', index=False, header=True, compression='zip')
-        with open(self.init_dir + 'entities/scalers.pickle', 'wb+') as handler:
+        pd.DataFrame.to_csv(self.scaled_users, generate_path('/dataset/entities/scaled_users.csv.zip'), index=False, header=True, compression='zip')
+        pd.DataFrame.to_csv(self.scaled_tracks, generate_path('/dataset/entities/scaled_tracks.csv.zip'), index=False, header=True, compression='zip')
+        with open(generate_path('entities/scalers.pickle'), 'wb+') as handler:
             pickle.dump(self.scalers, handler, protocol=pickle.HIGHEST_PROTOCOL)
 
     def load_scaled_dataset(self):
-        self.scaled_users = pd.read_csv(self.init_dir + 'entities/scaled_users.csv.zip', compression='zip', header=0)
-        self.scaled_tracks = pd.read_csv(self.init_dir + 'entities/scaled_tracks.csv.zip', compression='zip', header=0)
+        self.scaled_users = pd.read_csv(generate_path('/dataset/entities/scaled_users.csv.zip'), compression='zip', header=0)
+        self.scaled_tracks = pd.read_csv(generate_path('/dataset/entities/scaled_tracks.csv.zip'), compression='zip', header=0)
         # TODO: fix this call
         # self.scalers = pickle.load(open(self.init_dir + 'entities/scalers.pickle', 'wb+'))
 
@@ -45,7 +47,7 @@ class Dataset:
     def plot_and_save(self, data, feature_name, bins = 50, period='before'):
         hist, bins, _ = plt.hist(data, bins=bins)
         plt.xlabel(feature_name)
-        plt.savefig(self.init_dir + 'distributions/users/' + feature_name + '_' + period + '_scale.png')
+        plt.savefig(generate_path('distributions/users/' + feature_name + '_' + period + '_scale.png'))
         plt.show()
 
     def scale_users(self, verbose = False):
@@ -152,7 +154,7 @@ class Dataset:
         data = power_scaler.transform(data)
         if self.verbose:
             hist, bins, _ = plt.hist(data, bins=50)
-            plt.savefig(self.init_dir + 'distributions/tracks/' + feature + '_after_scale.png')
+            plt.savefig(generate_path('distributions/tracks/' + feature + '_after_scale.png'))
             plt.show()
         self.scalers['tracks'][feature] = power_scaler
         self.tracks[feature] = data
@@ -212,7 +214,7 @@ class Dataset:
             try:
                 ax = table[feature].plot.hist(bins=50)
                 plt.xlabel(feature)
-                plt.savefig(self.init_dir + 'distributions/' + table_name + '/' + feature + '_before_scale.png')
+                plt.savefig(generate_path('distributions/' + table_name + '/' + feature + '_before_scale.png'))
                 plt.show()
             except TypeError:
                 print(feature)

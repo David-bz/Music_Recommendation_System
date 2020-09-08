@@ -1,6 +1,7 @@
 from dataset.user_item_matrix import userTrackMatrix
 import pandas as pd
 import numpy as np
+from utils import generate_path
 
 class MLDataset:
     def __init__(self, verbose=True):
@@ -11,7 +12,6 @@ class MLDataset:
         user_track_mat.data.load_scaled_dataset()
 
         self.user_track_mat = user_track_mat
-        self.init_dir = self.user_track_mat.init_dir
         self.n_components = self.user_track_mat.n_components
         self.orig_users = self.user_track_mat.users
         self.users = self.user_track_mat.data.scaled_users
@@ -88,11 +88,11 @@ class MLDataset:
                     samples.append((user, track))
         return samples
 
-    def dump(self, path='ml_dataset.csv.zip'):
-        pd.DataFrame.to_csv(self.data, self.init_dir + path, index=False, header=True, compression='zip')
+    def dump(self, path='dataset/ml_dataset.csv.zip'):
+        pd.DataFrame.to_csv(self.data, generate_path(path), index=False, header=True, compression='zip')
 
-    def load(self, path='ml_dataset.csv.zip'):
-        self.loved = pd.read_csv(self.init_dir + path, header=0, compression='zip')
+    def load(self, path='dataset/ml_dataset.csv.zip'):
+        self.loved = pd.read_csv(generate_path(path), header=0, compression='zip')
 
     def build_dataset(self, positive_portion=0.3, samples_mum=100000, dump=True):
         samples = self.get_positive_samples(int(samples_mum * positive_portion))

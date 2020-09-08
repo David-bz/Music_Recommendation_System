@@ -3,6 +3,7 @@ import pandas as pd
 from dataset.data_scaling import *
 import scipy.sparse as sps
 from sklearn.decomposition import *
+from utils import generate_path
 import os
 
 class userTrackMatrix:
@@ -13,9 +14,9 @@ class userTrackMatrix:
         self.tracks = self.data.tracks
         self.shape = (len(self.users),len(self.tracks))
         self.mat =  sps.lil_matrix(self.shape)
-        self.init_dir = get_working_dir() + '/dataset/'
-        self.loved = pd.read_csv(self.init_dir + 'relations/loved.csv.zip', header=0, compression='zip')
-        self.played = pd.read_csv(self.init_dir +'relations/recently_played.csv.zip', header=0, compression='zip')
+
+        self.loved = pd.read_csv(generate_path('/dataset/relations/loved.csv.zip'), header=0, compression='zip')
+        self.played = pd.read_csv(generate_path('/dataset/relations/recently_played.csv.zip'), header=0, compression='zip')
 
         self.n_components = 0 # symbolise that both self.MF_users & self.MF_tracks didn't set yet
         if self.verbose:
@@ -59,22 +60,22 @@ class userTrackMatrix:
         if self.verbose:
             print('sparsity {}'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[1])))
 
-    def dump(self, npz_path='relations/user_track_matrix.npz',
-             users_path='relations/mf_users.npy',
-             tracks_path='relations/mf_tracks.npy'):
+    def dump(self, npz_path='dataset/relations/user_track_matrix.npz',
+             users_path='dataset/relations/mf_users.npy',
+             tracks_path='dataset/relations/mf_tracks.npy'):
         coo_matrix = self.mat.tocoo()
-        sps.save_npz(self.init_dir +npz_path, coo_matrix)
+        sps.save_npz(generate_path(npz_path), coo_matrix)
         if self.n_components > 0:
-            np.save(self.init_dir + users_path, self.MF_users)
-            np.save(self.init_dir + tracks_path, self.MF_tracks)
+            np.save(generate_path(users_path), self.MF_users)
+            np.save(generate_path(tracks_path), self.MF_tracks)
 
-    def load(self, npz_path='relations/user_track_matrix.npz',
-             users_path='relations/mf_users.npy',
-             tracks_path='relations/mf_tracks.npy'):
-        self.mat = sps.load_npz(self.init_dir + npz_path).tolil()
+    def load(self, npz_path='dataset/relations/user_track_matrix.npz',
+             users_path='dataset/relations/mf_users.npy',
+             tracks_path='dataset/relations/mf_tracks.npy'):
+        self.mat = sps.load_npz(generate_path(npz_path)).tolil()
         try:
-            self.MF_tracks = np.load(self.init_dir + tracks_path)
-            self.MF_users = np.load(self.init_dir + users_path)
+            self.MF_tracks = np.load(generate_path(tracks_path))
+            self.MF_users = np.load(generate_path(users_path))
             self.n_components = len(self.MF_users[0])
             if self.verbose:
                 print('sparsity {}, {} components'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[1]), self.n_components))
