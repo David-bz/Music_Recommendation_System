@@ -1,0 +1,47 @@
+{"info": 
+	{
+		"K": 250, 
+		"model": "vanilla_mf", 
+		"samples": 2
+	}, 
+	"1913": {
+		"loved_count": 23, 
+		"played_count": 200, 
+		"P@K": {
+			"loves": 0.0, 
+			"played_score": 0.0, 
+			"related_score": 0.0
+		}, 
+		"R@K": {
+			"loves": 0.0, 
+			"played_score": 0.0, 
+			"related_score": 0.0
+		}, 
+		"MAP": {
+			"loves": 369629.6956521739, 
+			"played_score": 260156.495, 
+			"related_score": 271447.4529147982
+		}
+	}, 
+	"3945": {
+		"loved_count": 5, 
+		"played_count": 200, 
+		"P@K": {
+			"loves": 0.004, 
+			"played_score": 0.0, 
+			"related_score": 0.004
+		}, 
+		"R@K": {
+			"loves": 0.2, 
+			"played_score": 0.0, 
+			"related_score": 0.004878048780487805
+		}, 
+		"MAP": {
+			"loves": 7422.4, 
+			"played_score": 126995.9, 
+			"related_score": 124079.47317073171
+		}
+	}
+}
+
+

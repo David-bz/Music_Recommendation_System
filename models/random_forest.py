@@ -5,6 +5,7 @@ import numpy as np
 
 class BaseEstimator:
     def __init__(self, verbose=True):
+        self.verbose = verbose
         self.ml_data = MLDataset()
         self.ml_data.load()
         self.users_num = self.ml_data.user_track_mat.shape[0]
@@ -20,14 +21,25 @@ class BaseEstimator:
 class RandomForestRecommender(BaseEstimator):
     def __init__(self, verbose=True):
         super().__init__(verbose=verbose)
-        self.estimator = RandomForestRegressor(verbose=verbose, n_jobs=-1)
+        self.estimator = RandomForestRegressor(n_estimators=100, verbose=verbose, n_jobs=-1)
         self.estimator = self.estimator.fit(self.X, self.Y)
+        np.random.seed(1)
+
 
     def predict(self, user):
+        user_matedata = self.ml_data.get_user_row_part(user)
+        track_ids = [track for track in range(self.tracks_num)]
+        chunks = np.array_split(track_ids ,50)
+
         scores = []
-        for track in range(self.tracks_num):
-            user_track_row = self.ml_data.get_user_track_row(user, track)[:-1]
-            scores.append(self.estimator.predict(user_track_row)[0])
+        for i,chunk in enumerate(chunks):
+            X_chuck = []
+            for track in chunk:
+                X_chuck.append(user_matedata + self.ml_data.get_track_row_part(track))
+
+            scores += self.estimator.predict(X_chuck).tolist()
+            if self.verbose:
+                print('user {} {}%: {} tracks predicted'.format(user, 2*i, len(scores)))
 
         scores = np.argsort(scores)[::-1]
         return scores
@@ -35,5 +47,5 @@ class RandomForestRecommender(BaseEstimator):
 
 if __name__ == '__main__':
     est = RandomForestRecommender()
-    evaluator = Evaluate(est)
-    evaluator.evaluate(50)
+    evaluator = Evaluate(est, 'simple_random_forest', K=250, samples=5)
+    evaluator.evaluate()

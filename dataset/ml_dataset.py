@@ -28,21 +28,34 @@ class MLDataset:
 
         for i in range(self.n_components):
             columns.append('MF_users_{}'.format(i))
-        for i in range(self.n_components):
-            columns.append('MF_tracks_{}'.format(i))
         for col in self.users.columns:
             columns.append(col)
+        for i in range(self.n_components):
+            columns.append('MF_tracks_{}'.format(i))
         for col in self.tracks.columns:
             columns.append(col)
         columns.append('score')
 
         return columns
 
+    def get_user_row_part(self, user):
+        row = self.MF_users[user, :].tolist()
+        row += self.users.iloc[user].tolist()
+        return row
+
+    def get_track_row_part(self, track):
+        row = self.MF_tracks[:, track].tolist()
+        row += self.tracks.iloc[track].tolist()
+        return row
+
+    def get_user_track_score(self, user, track):
+        return [self.user_track_mat.mat[user, track]]
+
+    def get_user_track_row(self, user, track):
+        return self.get_user_row_part(user) + self.get_track_row_part(track) + self.get_user_track_score(user, track)
+
     def add_user_track(self, user, track):
-        row = self.MF_users[user, :].tolist() + self.MF_tracks[:, track].tolist()
-        row = row + self.users.iloc[user].tolist() + self.tracks.iloc[track].tolist()
-        row = row + [self.user_track_mat.mat[user, track]]
-        self.data.loc[len(self.data)] = row
+        self.data.loc[len(self.data)] = self.get_user_track_row(user, track)
 
     def get_positive_samples(self, samples_num):
         samples = []
@@ -92,7 +105,7 @@ class MLDataset:
         pd.DataFrame.to_csv(self.data, generate_path(path), index=False, header=True, compression='zip')
 
     def load(self, path='dataset/ml_dataset.csv.zip'):
-        self.loved = pd.read_csv(generate_path(path), header=0, compression='zip')
+        self.data = pd.read_csv(generate_path(path), header=0, compression='zip')
 
     def build_dataset(self, positive_portion=0.3, samples_mum=100000, dump=True):
         samples = self.get_positive_samples(int(samples_mum * positive_portion))

@@ -214,7 +214,7 @@ class Dataset:
             try:
                 ax = table[feature].plot.hist(bins=50)
                 plt.xlabel(feature)
-                plt.savefig(generate_path('distributions/' + table_name + '/' + feature + '_before_scale.png'))
+                plt.savefig(generate_path('dataset/distributions/' + table_name + '/' + feature + '_before_scale.png'))
                 plt.show()
             except TypeError:
                 print(feature)

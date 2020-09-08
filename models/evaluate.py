@@ -1,45 +1,67 @@
 from dataset.ml_dataset import *
 from models.vanilla_models import *
 import numpy as np
+import json
 
 class Evaluate:
-    def __init__(self, model, K=100, verbose=True):
+    def __init__(self, model, model_description, K=100, samples=20, verbose=True):
         " model is object with function predict:user -> list of tracks ids where the first track is the most recommended "
         self.model = model
+        self.model_description = model_description
         self.K = K
+        self.samples = samples
         self.verbose = verbose
         self.data = MLDataset()
         self.data.load()
+        self.results = dict()
+        self.results['info'] = {
+            'K': self.K,
+            'model': model_description,
+            'samples': samples,
+        }
 
-    def evaluate_precision_at_k(self, samples):
-        results = []
-        user_ids = np.random.choice(self.data.user_track_mat.shape[0], samples, replace=False)
+    def add_results(self, user, results_type, loved_score, played_score, related_score):
+        results = {
+            'loves': loved_score,
+            'played_score': played_score,
+            'related_score': related_score
+        }
+        self.results['{}'.format(user)][results_type] = results
         if self.verbose:
-            print('calculate evaluate precision at k for {} users'.format(samples))
+            print('{}: {}\n'.format(results_type, results))
 
-        for user in user_ids:
-            related_tracks = self.data.user_track_mat.get_user_related_tracks(user)
-            recommended = self.model.predict(user)[:self.K]
-            assert len(recommended) > 0
-
-            success = sum([1 if track in related_tracks else 0 for track in recommended])
-            results.append(success / len(recommended))
-        return np.average(results)
-
-    def evaluate_recall_at_k(self, samples):
-        results = []
-        user_ids = np.random.choice(self.data.user_track_mat.shape[0], samples, replace=False)
+    def evaluate_precision_at_k(self, users):
         if self.verbose:
-            print('calculate evaluate recall at k for {} users'.format(samples))
+            print('calculate evaluate precision at k for {} users'.format(len(users)))
 
-        for user in user_ids:
-            related_tracks = self.data.user_track_mat.get_user_related_tracks(user)
-            recommended = self.model.predict(user)[:self.K]
-            assert len(recommended) > 0
+        for user, loved_tracks, played_tracks, related_tracks, recommended in users:
+            recommended = recommended[:self.K]
+            loved_score = sum([1 if track in loved_tracks else 0 for track in recommended]) / len(recommended)
+            played_score = sum([1 if track in played_tracks else 0 for track in recommended]) / len(recommended)
+            related_score = sum([1 if track in related_tracks else 0 for track in recommended]) / len(recommended)
+            self.add_results(user, 'P@K' , loved_score, played_score, related_score)
 
-            success = sum([1 if track in recommended else 0 for track in related_tracks])
-            results.append(success / min(len(related_tracks), self.K))
-        return np.average(results)
+    def evaluate_recall_at_k(self, users):
+        if self.verbose:
+            print('calculate evaluate recall at k for {} users'.format(len(users)))
+
+        for user, loved_tracks, played_tracks, related_tracks, recommended in users:
+            recommended = recommended[:self.K]
+            if len(loved_tracks) == 0:
+                loved_score = np.nan
+            else:
+                loved_score = sum([1 if track in recommended else 0 for track in loved_tracks]) / min(len(loved_tracks), self.K)
+
+            if len(played_tracks) == 0:
+                played_score = np.nan
+            else:
+                played_score = sum([1 if track in recommended else 0 for track in played_tracks]) / min(len(played_tracks), self.K)
+
+            if len(related_tracks) == 0:
+                related_score = np.nan
+            else:
+                related_score = sum([1 if track in recommended else 0 for track in related_tracks]) / min(len(related_tracks), self.K)
+            self.add_results(user, 'R@K' , loved_score, played_score, related_score)
 
     def get_position(self, track, recommended):
         try:
@@ -48,51 +70,58 @@ class Evaluate:
             pos = self.data.user_track_mat.shape[1]
         return pos
 
-    def evaluate_map(self, samples):
-        loved_results, played_results, related_results = [], [], []
-        user_ids = np.random.choice(self.data.user_track_mat.shape[0], samples, replace=False)
+    def evaluate_map(self, users):
         if self.verbose:
-            print('calculate map for {} users'.format(samples))
+            print('calculate map for {} users'.format(len(users)))
 
-        for user in user_ids:
+        for user, loved_tracks, played_tracks, related_tracks, recommended in users:
+            related_positions = []
+            if len(loved_tracks) == 0:
+                loved_score = np.nan
+            else:
+                loved_positions = [self.get_position(track, recommended) for track in loved_tracks]
+                related_positions += loved_positions
+                loved_score = np.average(loved_positions)
+
+            if len(played_tracks) == 0:
+                played_score = np.nan
+            else:
+                played_positions = [self.get_position(track, recommended) for track in played_tracks]
+                related_positions += played_positions
+                played_score = np.average(played_positions)
+
+            if len(related_tracks) == 0:
+                related_score = np.nan
+            else:
+                related_score = np.average(related_positions)
+            self.add_results(user, 'MAP', loved_score, played_score, related_score)
+
+    def evaluate(self):
+        user_ids = np.random.choice(self.data.user_track_mat.shape[0], self.samples, replace=False)
+        users = []
+        for i,user in enumerate(user_ids):
             loved_tracks = self.data.user_track_mat.get_user_loved_tracks(user)
             played_tracks = self.data.user_track_mat.get_user_played_tracks(user)
             related_tracks = played_tracks + loved_tracks
             recommended = self.model.predict(user)
 
-            loved_positions = [self.get_position(track, recommended) for track in loved_tracks]
-            played_positions = [self.get_position(track, recommended) for track in played_tracks]
-            related_positions = [self.get_position(track, recommended) for track in related_tracks]
-
-            for results, result in [(loved_results, loved_positions),
-                                    (played_results, played_positions),
-                                    (related_results, related_positions)]:
-                if len(result) > 0:
-                    results.append(result)
-
+            users.append((user, loved_tracks, played_tracks, related_tracks, recommended))
+            user_dict = {'loved_count': len(loved_tracks), 'played_count': len(played_tracks)}
+            self.results['{}'.format(user)] = user_dict
             if self.verbose:
-                result = (np.average(loved_positions), np.average(played_positions), np.average(related_positions))
-                print('evaluate_map after user {}, results (loved, played, related) : {}'.format(user, result))
-        return np.average((loved_results, played_results, related_results), 1)
+                print('got recommendations for {} users out of {}'.format(i+1, self.samples))
 
-    def evaluate(self, samples=200):
-        precision_at_k = self.evaluate_precision_at_k(samples)
-        if self.verbose:
-            print('precision at k {}'.format(precision_at_k))
+        self.evaluate_precision_at_k(users)
+        self.evaluate_recall_at_k(users)
+        self.evaluate_map(users)
 
-        recall_at_k = self.evaluate_recall_at_k(samples)
-        if self.verbose:
-            print('recall at k {}'.format(recall_at_k))
+        with open(generate_path('models/model_results/' + self.model_description + '.json'), 'w') as fp:
+            json.dump(self.results, fp)
 
-        map = self.evaluate_map(samples)
-        if self.verbose:
-            print('map {}'.format(map))
-
-        return (precision_at_k, recall_at_k, map)
 
 if __name__ == "__main__":
     vanilla_mf = Vanilla_MF()
-    evaluator = Evaluate(vanilla_mf, K=250)
-    evaluator.evaluate(50)
+    evaluator = Evaluate(vanilla_mf, 'vanilla_mf', K=250, samples=2)
+    evaluator.evaluate()
 
 
