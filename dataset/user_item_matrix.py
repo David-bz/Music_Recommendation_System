@@ -82,7 +82,7 @@ class userTrackMatrix:
         except Exception as e:
             print(e)
 
-    def matrix_factorize(self, n_components=8, init='nndsvd', l1_ratio = 0.5, tol=1e-4):
+    def matrix_factorize(self, n_components=12, init='nndsvd', l1_ratio = 0.5, tol=1e-4):
         self.n_components = n_components
         model = NMF(n_components=n_components, init=init, random_state=0,
                     verbose=self.verbose, max_iter=400, l1_ratio=l1_ratio,

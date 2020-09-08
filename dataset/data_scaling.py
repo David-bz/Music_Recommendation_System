@@ -34,7 +34,7 @@ class Dataset:
         self.scaled_tracks = self.tracks[self.tracks.columns[3:]] # exclude track name, artist, and album
         pd.DataFrame.to_csv(self.scaled_users, generate_path('/dataset/entities/scaled_users.csv.zip'), index=False, header=True, compression='zip')
         pd.DataFrame.to_csv(self.scaled_tracks, generate_path('/dataset/entities/scaled_tracks.csv.zip'), index=False, header=True, compression='zip')
-        with open(generate_path('entities/scalers.pickle'), 'wb+') as handler:
+        with open(generate_path('dataset/entities/scalers.pickle'), 'wb+') as handler:
             pickle.dump(self.scalers, handler, protocol=pickle.HIGHEST_PROTOCOL)
 
     def load_scaled_dataset(self):
@@ -47,7 +47,7 @@ class Dataset:
     def plot_and_save(self, data, feature_name, bins = 50, period='before'):
         hist, bins, _ = plt.hist(data, bins=bins)
         plt.xlabel(feature_name)
-        plt.savefig(generate_path('distributions/users/' + feature_name + '_' + period + '_scale.png'))
+        plt.savefig(generate_path('dataset/distributions/users/' + feature_name + '_' + period + '_scale.png'))
         plt.show()
 
     def scale_users(self, verbose = False):
@@ -154,7 +154,7 @@ class Dataset:
         data = power_scaler.transform(data)
         if self.verbose:
             hist, bins, _ = plt.hist(data, bins=50)
-            plt.savefig(generate_path('distributions/tracks/' + feature + '_after_scale.png'))
+            plt.savefig(generate_path('dataset/distributions/tracks/' + feature + '_after_scale.png'))
             plt.show()
         self.scalers['tracks'][feature] = power_scaler
         self.tracks[feature] = data
