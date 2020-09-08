@@ -11,7 +11,7 @@ class Dataset:
         if os.path.split(os.getcwd())[-1] == 'dataset':
             self.init_dir = './'
         else:
-            self.init_dir = './dataset/'
+            self.init_dir = '../dataset/'
         self.tracks =  pd.read_csv(self.init_dir + 'entities/tracks.csv.zip', compression='zip')
         self.users = pd.read_csv(self.init_dir + 'entities/users.csv.zip', index_col=0, compression='zip')
         self.scalers = {'users' : {}, 'tracks' : {}}

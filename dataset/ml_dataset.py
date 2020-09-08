@@ -46,10 +46,19 @@ class MLDataset:
 
     def get_positive_samples(self, samples_num):
         samples = []
+        user_ids = [i for i in range(self.user_track_mat.shape[0])]
+        np.random.shuffle(user_ids)
+
         if self.verbose:
+            if samples_num < len(user_ids)*5:
+                print("{} users won't be covered in the dataset".format(int(len(user_ids) - (samples_num / 5))))
             print('collecting {} positive tracks'.format(samples_num))
+
         while len(samples) < samples_num:
-            user = np.random.choice(self.user_track_mat.shape[0], 1)[0]
+            if len(user_ids) > 0:
+                user = list.pop(user_ids)
+            else:
+                user = np.random.choice(self.user_track_mat.shape[0], 1)[0]
             user_related_tracks = self.user_track_mat.get_user_related_tracks(user)
             tracks = np.random.choice(user_related_tracks, min(len(user_related_tracks), 5))
             for track in tracks:
@@ -59,10 +68,19 @@ class MLDataset:
 
     def get_non_positive_samples(self, samples_num):
         samples = []
+        user_ids = [i for i in range(self.user_track_mat.shape[0])]
+        np.random.shuffle(user_ids)
+
         if self.verbose:
+            if samples_num < len(user_ids)*5:
+                print("{} users won't be covered in the dataset".format(int(len(user_ids) - samples_num / 5)))
             print('collecting {} non-positive tracks'.format(samples_num))
+
         while len(samples) < samples_num:
-            user = np.random.choice(self.user_track_mat.shape[0], 1)[0]
+            if len(user_ids) > 0:
+                user = list.pop(user_ids)
+            else:
+                user = np.random.choice(self.user_track_mat.shape[0], 1)[0]
             related_tracks = self.user_track_mat.get_user_related_tracks(user)
             tracks = np.random.choice(self.user_track_mat.shape[1],  5)
             for track in tracks:
@@ -76,7 +94,7 @@ class MLDataset:
     def load(self, path='ml_dataset.csv.zip'):
         self.loved = pd.read_csv(self.init_dir + path, header=0, compression='zip')
 
-    def build_dataset(self, positive_portion=0.25, samples_mum=40000, dump=True):
+    def build_dataset(self, positive_portion=0.3, samples_mum=100000, dump=True):
         samples = self.get_positive_samples(int(samples_mum * positive_portion))
         samples += self.get_non_positive_samples(samples_mum - len(samples))
         np.random.shuffle(samples)

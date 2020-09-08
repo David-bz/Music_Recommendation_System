@@ -17,7 +17,7 @@ class userTrackMatrix:
         if os.path.split(os.getcwd())[-1] == 'dataset':
             self.init_dir = './'
         else:
-            self.init_dir = './dataset/'
+            self.init_dir = '../dataset/'
         self.loved = pd.read_csv(self.init_dir + 'relations/loved.csv.zip', header=0, compression='zip')
         self.played = pd.read_csv(self.init_dir +'relations/recently_played.csv.zip', header=0, compression='zip')
 
@@ -55,13 +55,13 @@ class userTrackMatrix:
         # score_fun: a function (self * user_id * track_id) -> (score)
         self.process_table_events(self.loved, score_fun)
         if self.verbose:
-            print('sparsity {}'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[0])))
+            print('sparsity {}'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[1])))
 
     def process_played_events(self, score_fun):
         # score_fun: a function (self * user_id * track_id) -> (score)
         self.process_table_events(self.played, score_fun)
         if self.verbose:
-            print('sparsity {}'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[0])))
+            print('sparsity {}'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[1])))
 
     def dump(self, npz_path='relations/user_track_matrix.npz',
              users_path='relations/mf_users.npy',
@@ -81,7 +81,7 @@ class userTrackMatrix:
             self.MF_users = np.load(self.init_dir + users_path)
             self.n_components = len(self.MF_users[0])
             if self.verbose:
-                print('sparsity {}, {} components'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[0]), self.n_components))
+                print('sparsity {}, {} components'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[1]), self.n_components))
         except Exception as e:
             print(e)
 
@@ -94,23 +94,29 @@ class userTrackMatrix:
         self.MF_tracks = model.components_
         if self.verbose:
             print('{} components reconstruction error {}'.format(n_components, model.reconstruction_err_))
-            print('sparsity {}'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[0])))
+            print('sparsity {}'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[1])))
 
     def get_mf_score(self, user, track):
         return sum([self.MF_users[user, i]*self.MF_tracks[i, track] for i in range(self.n_components)])
 
+    def get_user_loved_tracks(self, user):
+        # related_tracks contains all the tracks that this user loved
+        return list(self.loved[self.loved.user_id == user].track_id.values)
+
+    def get_user_played_tracks(self, user):
+        # related_tracks contains all the tracks that this user played
+        return list(self.played[self.played.user_id == user].track_id.values)
+
     def get_user_related_tracks(self, user):
-        # related_tracks contains all the tracks that this user loved / played
-        related_tracks = list(self.played[self.played.user_id == user].track_id.values)
-        related_tracks = related_tracks + list(self.loved[self.loved.user_id == user].track_id.values)
-        return related_tracks
+        # related_tracks contains all the tracks that this user loved or played
+        return self.get_user_loved_tracks(user) + self.get_user_played_tracks(user)
 
     def evaluate_mf(self, samples = 200):
         count = 0
         sum = 0
         for user in np.random.choice(self.shape[0], samples):
             # score[i] is the score of track_id == i
-            scores = np.dot(self.MF_users[235, :], self.MF_tracks)
+            scores = np.dot(self.MF_users[user, :], self.MF_tracks)
             # positions[i] is the i'th worst track by this user
             positions = np.argsort(scores)
             # related_tracks contains all the tracks that this user loved / played
