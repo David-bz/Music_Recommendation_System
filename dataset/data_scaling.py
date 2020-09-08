@@ -8,7 +8,7 @@ import os
 
 def get_working_dir():
     tokens = os.getcwd().split('/')
-    work_dir_idx = tokens.index('Music_Reccomender_System') + 1
+    work_dir_idx = tokens.index('Music_Recommendation_System') + 1
     return os.path.join("/", *tokens[:work_dir_idx]) + '/'
 
 class Dataset:
