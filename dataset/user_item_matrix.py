@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from dataset.data_scaling import Dataset
+from dataset.data_scaling import *
 import scipy.sparse as sps
 from sklearn.decomposition import *
 import os
@@ -13,11 +13,7 @@ class userTrackMatrix:
         self.tracks = self.data.tracks
         self.shape = (len(self.users),len(self.tracks))
         self.mat =  sps.lil_matrix(self.shape)
-
-        if os.path.split(os.getcwd())[-1] == 'dataset':
-            self.init_dir = './'
-        else:
-            self.init_dir = '../dataset/'
+        self.init_dir = get_working_dir() + '/dataset/'
         self.loved = pd.read_csv(self.init_dir + 'relations/loved.csv.zip', header=0, compression='zip')
         self.played = pd.read_csv(self.init_dir +'relations/recently_played.csv.zip', header=0, compression='zip')
 

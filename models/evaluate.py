@@ -49,7 +49,7 @@ class Evaluate:
         return pos
 
     def evaluate_map(self, samples):
-        results = []
+        loved_results, played_results, related_results = [], [], []
         user_ids = np.random.choice(self.data.user_track_mat.shape[0], samples, replace=False)
         if self.verbose:
             print('calculate map for {} users'.format(samples))
@@ -64,10 +64,16 @@ class Evaluate:
             played_positions = [self.get_position(track, recommended) for track in played_tracks]
             related_positions = [self.get_position(track, recommended) for track in related_tracks]
 
-            result = (np.average(loved_positions), np.average(played_positions), np.average(related_positions))
-            results.append(result)
-            print('evaluate_map after user {}, results (loved, played, related) : {}'.format(user, results))
-        return np.average(results, 0)
+            for results, result in [(loved_results, loved_positions),
+                                    (played_results, played_positions),
+                                    (related_results, related_positions)]:
+                if len(result) > 0:
+                    results.append(result)
+
+            if self.verbose:
+                result = (np.average(loved_positions), np.average(played_positions), np.average(related_positions))
+                print('evaluate_map after user {}, results (loved, played, related) : {}'.format(user, result))
+        return np.average((loved_results, played_results, related_results), 1)
 
     def evaluate(self, samples=200):
         precision_at_k = self.evaluate_precision_at_k(samples)
