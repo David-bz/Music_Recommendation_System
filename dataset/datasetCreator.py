@@ -40,7 +40,8 @@ def israelis_users_search(required_users_num):
                               'pokutan', 'PsychedelicAcid', 'razterizer', 'rodionm', 'Ronit123', 'royal99', 'ruggerk', 'shalosh4laavoda', 'shaninosh', 'Shorty_17', 'silviaelen', 'Sindri32',
                               'SouthOfHeaven97', 'strummer121', 'Tamyl', 'TristanBlair', 'turkiz', 'urban_wh0re', 'Vodaka', 'ymarder', 'D--Soul', 'abialystok', 'shigaugi', 'JustRap', 'ILGIZA',
                               'sofia_h', 'kiallan', 'victimex', 'gillush', 'smileytpb', 'oranium77', 'Polymeron'}
-    israelis_known_names = {'Or', 'David', 'Dorin', 'Adi','Noa','Nimrod','Asaf','Itamar','Daniel','Hai','Alon','Dana','Adir','Yossi','Ido','Amir','Itay','Ariel','Shahaf','Shahar','Tal','Ofek'}
+    israelis_known_names = {'Or', 'David', 'Dorin', 'Adi','Noa','Nimrod','Asaf','Itamar','Daniel','Hai','Alon','Dana','Adir','Yossi','Ido','Amir','Itay','Ariel','Shahaf','Shahar','Tal','Ofek',
+                            'Lidoy', 'Astma', 'Shaked', 'Mentos', 'Shely', 'Berger'}
     open_set = last_fm_israelis_users.union(israelis_known_names)
     close_set, active_users = set(), set()
 
