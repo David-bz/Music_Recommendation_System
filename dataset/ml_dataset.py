@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 from utils import generate_path
 
+
 class MLDataset:
     def __init__(self, verbose=True):
         self.verbose = verbose
@@ -78,7 +79,6 @@ class MLDataset:
                 samples.append((user, track))
         return samples
 
-
     def get_non_positive_samples(self, samples_num):
         samples = []
         user_ids = [i for i in range(self.user_track_mat.shape[0])]
@@ -114,7 +114,7 @@ class MLDataset:
 
         if self.verbose:
             print('adding {} user-tracks pairs to dataset'.format(len(samples)))
-        for user,track in samples:
+        for user, track in samples:
             self.add_user_track(user, track)
             if self.verbose and len(self.data) % 100 == 0:
                 print('{} user-tracks pairs already added to dataset'.format(len(self.data)))
