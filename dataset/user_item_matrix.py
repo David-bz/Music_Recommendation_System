@@ -82,11 +82,11 @@ class userTrackMatrix:
         except Exception as e:
             print(e)
 
-    def matrix_factorize(self, n_components=12, init='nndsvd', l1_ratio = 0.5, tol=1e-4):
+    def matrix_factorize(self, n_components=12, init='nndsvd', l1_ratio=0.5, tol=1e-4, alpha=0.):
         self.n_components = n_components
         model = NMF(n_components=n_components, init=init, random_state=0,
                     verbose=self.verbose, max_iter=400, l1_ratio=l1_ratio,
-                    tol=tol)
+                    tol=tol, alpha=alpha)
         self.MF_users = model.fit_transform(self.mat)
         self.MF_tracks = model.components_
         if self.verbose:
@@ -145,10 +145,11 @@ if __name__ == '__main__':
     user_track_matrix = userTrackMatrix()
 
     # create a trivial score function - for each event increase the score by 1
-    trivial = lambda object, i, j: object.mat[i, j] + 1
+    played_promotion_step = lambda obj, i, j: obj.mat[i, j] + 1
+    loveded_promotion_step = lambda obj, i, j: obj.mat[i, j] + 5
 
-    user_track_matrix.process_loved_events(trivial)
-    user_track_matrix.process_played_events(trivial)
+    user_track_matrix.process_loved_events(loveded_promotion_step)
+    user_track_matrix.process_played_events(played_promotion_step)
     user_track_matrix.matrix_factorize()
     user_track_matrix.evaluate_mf()
     user_track_matrix.dump()
