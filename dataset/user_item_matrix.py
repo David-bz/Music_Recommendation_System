@@ -4,21 +4,24 @@ from dataset.data_scaling import *
 import scipy.sparse as sps
 from sklearn.decomposition import *
 from utils import generate_path
-import os
+import json
 
 class userTrackMatrix:
-    def __init__(self, verbose=True):
+    def __init__(self, verbose=True, drop=False):
         self.verbose = verbose
         self.data = Dataset()
         self.users = self.data.users
         self.tracks = self.data.tracks
-        self.shape = (len(self.users),len(self.tracks))
-        self.mat =  sps.lil_matrix(self.shape)
+        self.shape = (len(self.users), len(self.tracks))
+        self.mat = sps.lil_matrix(self.shape)
+        self.drop = drop
+        self.drop_dict = None
+        self.relation_dir = 'dataset/relations/'
 
         self.loved = pd.read_csv(generate_path('/dataset/relations/loved.csv.zip'), header=0, compression='zip')
         self.played = pd.read_csv(generate_path('/dataset/relations/recently_played.csv.zip'), header=0, compression='zip')
 
-        self.n_components = 0 # symbolise that both self.MF_users & self.MF_tracks didn't set yet
+        self.n_components = 0  # symbolise that both self.MF_users & self.MF_tracks didn't set yet
         if self.verbose:
             print('create users-tracks matrix {}'.format(self.shape))
             print('{} played events and {} loved events to process'.format(len(self.played), len(self.loved)))
@@ -38,18 +41,42 @@ class userTrackMatrix:
     def get_track_love_count(self, track_id):
         return self.get_item_count(self.loved, 'track_id', track_id)
 
-    def process_table_events(self,table, score_fun):
+    def process_table_events(self, table, score_fun):
         # score_fun: a function (self * user_id * track_id) -> (score)
         if self.verbose:
             bucket_size = len(table) // 100
 
         for index, row in table.iterrows():
+            if self.drop_dict is not None \
+                    and str(row.user_id) in self.drop_dict.keys() \
+                    and row.track_id in self.drop_dict[str(row.user_id)]:
+                continue
+
             self.mat[row.user_id, row.track_id] = score_fun(self, row.user_id, row.track_id)
             if self.verbose and index % bucket_size == 0:
                 print('done {}%: {} out of {}'.format(index // bucket_size, index, len(table)))
 
+    def fill_drop_dict(self, drop_track_per):
+        self.drop_dict, count = dict(), 0
+        for user in range(self.shape[0]):
+            num_to_drop = self.get_user_love_count(user) // drop_track_per
+            if num_to_drop <= 0:
+                continue
+
+            self.drop_dict[str(user)] = []
+            tracks_to_drop = np.random.choice(self.get_user_loved_tracks(user), num_to_drop)
+            for track in tracks_to_drop:
+                count += 1
+                self.drop_dict[str(user)].append(int(track))
+
+                if self.verbose and count % 100 == 0:
+                    print('{} tracks propped'.format(count))
+
     def process_loved_events(self, score_fun):
         # score_fun: a function (self * user_id * track_id) -> (score)
+        if self.drop:
+            self.fill_drop_dict(20)
+
         self.process_table_events(self.loved, score_fun)
         if self.verbose:
             print('sparsity {}'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[1])))
@@ -60,28 +87,46 @@ class userTrackMatrix:
         if self.verbose:
             print('sparsity {}'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[1])))
 
-    def dump(self, npz_path='dataset/relations/user_track_matrix.npz',
-             users_path='dataset/relations/mf_users.npy',
-             tracks_path='dataset/relations/mf_tracks.npy'):
+    def get_drop_prefix(self):
+        if self.drop:
+            return 'drop_'
+        else:
+            return ''
+
+    def get_paths(self):
+        npz_path = self.relation_dir + self.get_drop_prefix() + 'user_track_matrix.npz'
+        users_path = self.relation_dir + self.get_drop_prefix() + 'mf_users.npy'
+        tracks_path = self.relation_dir + self.get_drop_prefix() + 'mf_tracks.npy'
+        return npz_path, users_path, tracks_path
+
+    def dump(self):
+        npz_path, users_path, tracks_path = self.get_paths()
         coo_matrix = self.mat.tocoo()
         sps.save_npz(generate_path(npz_path), coo_matrix)
         if self.n_components > 0:
             np.save(generate_path(users_path), self.MF_users)
             np.save(generate_path(tracks_path), self.MF_tracks)
+        if self.drop_dict is not None:
+            with open(generate_path(self.relation_dir + 'drop_dict.json'), 'w') as fp:
+                json.dump(self.drop_dict, fp)
 
-    def load_mat(self, npz_path='dataset/relations/user_track_matrix.npz'):
+    def load_mat(self, npz_path):
         self.mat = sps.load_npz(generate_path(npz_path)).tolil()
 
-    def load(self, npz_path='dataset/relations/user_track_matrix.npz',
-             users_path='dataset/relations/mf_users.npy',
-             tracks_path='dataset/relations/mf_tracks.npy'):
+    def load(self):
+        npz_path, users_path, tracks_path = self.get_paths()
         self.load_mat(npz_path)
         try:
             self.MF_tracks = np.load(generate_path(tracks_path))
             self.MF_users = np.load(generate_path(users_path))
             self.n_components = len(self.MF_users[0])
+            if self.drop:
+                with open(generate_path(self.relation_dir + 'drop_dict.json')) as json_file:
+                    self.drop_dict = json.load(json_file)
+
             if self.verbose:
-                print('sparsity {}, {} components'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[1]), self.n_components))
+                print('sparsity {}, {} components'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[1]),
+                                                          self.n_components))
         except Exception as e:
             print(e)
 
@@ -97,7 +142,7 @@ class userTrackMatrix:
             print('sparsity {}'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[1])))
 
     def get_mf_score(self, user, track):
-        return sum([self.MF_users[user, i]*self.MF_tracks[i, track] for i in range(self.n_components)])
+        return sum([self.MF_users[user, i] * self.MF_tracks[i, track] for i in range(self.n_components)])
 
     def get_user_loved_tracks(self, user):
         # related_tracks contains all the tracks that this user loved
@@ -111,7 +156,7 @@ class userTrackMatrix:
         # related_tracks contains all the tracks that this user loved or played
         return self.get_user_loved_tracks(user) + self.get_user_played_tracks(user)
 
-    def evaluate_mf(self, samples = 200):
+    def evaluate_mf(self, samples=200):
         count = 0
         sum = 0
         for user in np.random.choice(self.shape[0], samples):
@@ -137,15 +182,13 @@ class userTrackMatrix:
                 print('user {}, score {}, avg position {}, {} related tracks'.format(
                     user, user_score, int(avg_position), len(related_tracks)))
             sum += user_score
-            count +=1
+            count += 1
 
         print('score {}'.format(sum / count))
 
 
-
-
 if __name__ == '__main__':
-    user_track_matrix = userTrackMatrix()
+    user_track_matrix = userTrackMatrix(drop=True)
 
     # create a trivial score function - for each event increase the score by 1
     played_promotion_step = lambda obj, i, j: obj.mat[i, j] + 1
