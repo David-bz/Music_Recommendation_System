@@ -12,9 +12,8 @@ class BaseEstimator:
         self.ml_data.load()
         self.users_num = self.ml_data.user_track_mat.shape[0]
         self.tracks_num = self.ml_data.user_track_mat.shape[1]
-        self.scaler = MinMaxScaler()
-        self.orig_X = self.ml_data.data.drop(['score'], axis=1).values
-        self.X = self.scaler.fit_transform(self.orig_X)
+        self.orig_X = self.ml_data.data.drop(['score'], axis=1)
+        self.X = self.orig_X.values
         self.Y = self.ml_data.data['score'].values
 
     def predict(self, user):
@@ -40,7 +39,6 @@ class RandomForestRecommender(BaseEstimator):
             for track in chunk:
                 X_chuck.append(user_metadata + self.ml_data.get_track_row_part(track))
 
-            X_chuck = self.scaler.transform(X_chuck)
             scores += self.estimator.predict(X_chuck).tolist()
             if self.verbose:
                 print('user {} {}%: {} tracks predicted'.format(user, 2*i, len(scores)))
