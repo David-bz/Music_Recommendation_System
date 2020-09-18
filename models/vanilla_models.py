@@ -1,6 +1,7 @@
 from dataset.ml_dataset import *
 from sklearn.neighbors import NearestNeighbors
 import numpy as np
+import time
 
 class BaseVanilla:
     def __init__(self):
@@ -18,7 +19,7 @@ class Vanilla_MF(BaseVanilla):
         positions = np.argsort(scores)[::-1]
         return positions
 
-class Vanilla_NN(BaseVanilla):
+class VanillaNearestUsers(BaseVanilla):
     def __init__(self, K = 1):
         super().__init__()
         self.K = K
@@ -45,8 +46,40 @@ class Vanilla_NN(BaseVanilla):
         indices = [k for k, v in sorted(nearest.items(), key = lambda item : item[1], reverse = True)]
         return indices
 
+
+class VanillaNearestTracks(BaseVanilla):
+    def __init__(self, K = 1):
+        super().__init__()
+        self.K = K
+        self.NN = NearestNeighbors(n_neighbors=self.K + 1, algorithm='ball_tree')
+        self.NN.fit(self.MF_tracks.transpose())
+
+    def get_nearest_tracks(self, track_id):
+        """ gets a track and returns its K most nearest tracks in the latent space """
+        track_vector = self.MF_tracks[:, track_id].reshape(1, -1)
+        distance, index = self.NN.kneighbors(track_vector)
+        nearest_track_idx = list(index[0, 1:])
+        return nearest_track_idx
+
+    def predict(self, user):
+        tracks_indices = self.user_track_matrix.mat.rows[user]
+        tracks_scores = self.user_track_matrix.mat.data[user]
+        # sort the indices by the best score
+        tracks_indices = [idx for _,idx in sorted(zip(tracks_scores, tracks_indices), reverse = True)]
+        recommend = []
+        for track_id in tracks_indices[:10]:
+            a = time.time()
+            print("getting nearest tracks")
+            similar_tracks =  self.get_nearest_tracks(track_id)
+            for t in similar_tracks:
+                if t not in recommend: recommend.append(t)
+            print("> got nearest tracks: {:.3} secs".format(time.time() - a))
+        return recommend
+
+
+
 if __name__ == '__main__':
-    v = Vanilla_NN(3)
+    v = VanillaNearestTracks(3)
     print(v.predict(4000))
 
 
