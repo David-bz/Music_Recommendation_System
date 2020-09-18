@@ -69,10 +69,13 @@ class userTrackMatrix:
             np.save(generate_path(users_path), self.MF_users)
             np.save(generate_path(tracks_path), self.MF_tracks)
 
+    def load_mat(self, npz_path='dataset/relations/user_track_matrix.npz'):
+        self.mat = sps.load_npz(generate_path(npz_path)).tolil()
+
     def load(self, npz_path='dataset/relations/user_track_matrix.npz',
              users_path='dataset/relations/mf_users.npy',
              tracks_path='dataset/relations/mf_tracks.npy'):
-        self.mat = sps.load_npz(generate_path(npz_path)).tolil()
+        self.load_mat(npz_path)
         try:
             self.MF_tracks = np.load(generate_path(tracks_path))
             self.MF_users = np.load(generate_path(users_path))
