@@ -1,10 +1,9 @@
-import numpy as np
-import pandas as pd
 from dataset.data_scaling import *
 import scipy.sparse as sps
 from sklearn.decomposition import *
 from utils import generate_path
 import json
+
 
 class userTrackMatrix:
     def __init__(self, verbose=True, drop=False):
@@ -144,17 +143,23 @@ class userTrackMatrix:
     def get_mf_score(self, user, track):
         return sum([self.MF_users[user, i] * self.MF_tracks[i, track] for i in range(self.n_components)])
 
-    def get_user_loved_tracks(self, user):
+    def get_user_loved_tracks(self, user, drop=False):
         # related_tracks contains all the tracks that this user loved
-        return list(self.loved[self.loved.user_id == user].track_id.values)
+        tracks = list(self.loved[self.loved.user_id == user].track_id.values)
+        if drop:
+            tracks = [track for track in tracks if track not in self.drop_dict[str(user)]]
+        return tracks
 
-    def get_user_played_tracks(self, user):
+    def get_user_played_tracks(self, user, drop=False):
         # related_tracks contains all the tracks that this user played
-        return list(self.played[self.played.user_id == user].track_id.values)
+        tracks = list(self.played[self.played.user_id == user].track_id.values)
+        if drop:
+            tracks = [track for track in tracks if track not in self.drop_dict[str(user)]]
+        return tracks
 
-    def get_user_related_tracks(self, user):
+    def get_user_related_tracks(self, user, drop=False):
         # related_tracks contains all the tracks that this user loved or played
-        return self.get_user_loved_tracks(user) + self.get_user_played_tracks(user)
+        return self.get_user_loved_tracks(user, drop) + self.get_user_played_tracks(user, drop)
 
     def evaluate_mf(self, samples=200):
         count = 0
