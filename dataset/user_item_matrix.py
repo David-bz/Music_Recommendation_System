@@ -162,6 +162,11 @@ class userTrackMatrix:
         # related_tracks contains all the tracks that this user loved or played
         return self.get_user_loved_tracks(user) + self.get_user_played_tracks(user)
 
+    def get_user_dropped_tracks(self, user):
+        # when in drop mode, get the list for a certain user
+        return self.drop_dict.get(str(user), []) if self.drop else []
+
+
     def evaluate_mf(self, samples=200):
         count = 0
         sum = 0
