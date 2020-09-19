@@ -23,6 +23,9 @@ class MLDataset:
         self.MF_tracks = self.user_track_mat.MF_tracks
         self.data = pd.DataFrame(columns=self.get_ml_dataset_columns())
 
+    def reset_data(self):
+        self.data = pd.DataFrame(columns=self.get_ml_dataset_columns())
+
     def get_ml_dataset_columns(self):
         columns = []
 
@@ -106,6 +109,12 @@ class MLDataset:
     def load(self, path='dataset/ml_dataset.csv.zip'):
         self.data = pd.read_csv(generate_path(path), header=0, compression='zip')
 
+    def populate_samples(self, samples):
+        for user, track in samples:
+            self.add_user_track(user, track)
+            if self.verbose and len(self.data) % 500 == 0:
+                print('{} out of {} user-tracks pairs already added to dataset'.format(len(self.data), len(samples)))
+
     def build_dataset(self, positive_portion=0.3, samples_mum=100000, dump=True):
         samples = self.get_positive_samples(int(samples_mum * positive_portion))
         samples += self.get_non_positive_samples(samples_mum - len(samples))
@@ -113,10 +122,7 @@ class MLDataset:
 
         if self.verbose:
             print('adding {} user-tracks pairs to dataset'.format(len(samples)))
-        for user, track in samples:
-            self.add_user_track(user, track)
-            if self.verbose and len(self.data) % 100 == 0:
-                print('{} user-tracks pairs already added to dataset'.format(len(self.data)))
+        self.populate_samples(samples)
 
         if dump:
             self.dump()
@@ -129,8 +135,54 @@ class MLDataset:
         nearest_user_idx = list(index[0, 1:])
         return nearest_user_idx
 
-    def build_dataset_for_user(self, user, n_neighbors, positive_tracks_per_user=200, positive_portion=0.3):
-        
+    def build_dataset_for_user(self, user, n_neighbors, positive_tracks_per_neighbor=200, positive_portion=0.3):
+        samples = []
+
+        # collect all the positive tracks for the pivot user
+        if self.verbose:
+            print('collect all the positive tracks for the pivot user {}'.format(user))
+        pivot_user_related_tracks = self.user_track_mat.get_user_related_tracks(user)
+        for track in pivot_user_related_tracks:
+            samples.append((user, track))
+
+        # collect non positive tracks for the pivot user
+        non_positive_tracks_num = (1-positive_portion) * len(samples) / positive_portion
+        if self.verbose:
+            print('collect {} non positive tracks for the pivot user {}'.format(non_positive_tracks_num, user))
+        non_positive_tracks_count = 0
+        while non_positive_tracks_count < non_positive_tracks_num:
+            track = np.random.choice(self.user_track_mat.shape[1], 1)[0]
+            if track not in pivot_user_related_tracks:
+                samples.append((user, track))
+                non_positive_tracks_count += 1
+
+        # get n_neighbors nearest neighbors of this pivot user
+        if self.verbose:
+            print('collect {} nearest neighbors of user {}'.format(n_neighbors, user))
+        neighbors = self.get_nearest_users(user, n_neighbors)
+
+        for i, neighbor in enumerate(neighbors):
+            if self.verbose:
+                print('collect neighbor {} ({} out of {})'.format(neighbor, i, n_neighbors))
+
+            # collect up to positive_tracks_per_neighbor for this neighbor
+            all_neighbor_positive_tracks = self.user_track_mat.get_user_related_tracks(neighbor)
+            neighbor_positive_tracks = all_neighbor_positive_tracks[:positive_tracks_per_neighbor]
+            for track in neighbor_positive_tracks:
+                samples.append((neighbor, track))
+
+            # collect non positive tracks for this neighbor
+            non_positive_tracks_num = (1-positive_portion) * positive_tracks_per_neighbor / positive_portion
+            non_positive_tracks_count = 0
+            while non_positive_tracks_count < non_positive_tracks_num:
+                track = np.random.choice(self.user_track_mat.shape[1], 1)[0]
+                if track not in all_neighbor_positive_tracks:
+                    samples.append((neighbor, track))
+                    non_positive_tracks_count += 1
+
+        if self.verbose:
+            print('{} user-track pairs of {} nearest neighbors collected'.format(len(samples), n_neighbors))
+        self.populate_samples(samples)
 
 
 if __name__ == '__main__':

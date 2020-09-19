@@ -147,14 +147,14 @@ class userTrackMatrix:
     def get_user_loved_tracks(self, user):
         # related_tracks contains all the tracks that this user loved
         tracks = list(self.loved[self.loved.user_id == user].track_id.values)
-        if self.drop:
+        if self.drop and user in self.drop_dict.keys():
             tracks = [track for track in tracks if track not in self.drop_dict[str(user)]]
         return tracks
 
     def get_user_played_tracks(self, user):
         # related_tracks contains all the tracks that this user played
         tracks = list(self.played[self.played.user_id == user].track_id.values)
-        if self.drop:
+        if self.drop and user in self.drop_dict.keys():
             tracks = [track for track in tracks if track not in self.drop_dict[str(user)]]
         return tracks
 
