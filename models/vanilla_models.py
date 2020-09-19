@@ -4,8 +4,8 @@ import numpy as np
 import time
 
 class BaseVanilla:
-    def __init__(self):
-        self.user_track_matrix = userTrackMatrix()
+    def __init__(self, drop=False):
+        self.user_track_matrix = userTrackMatrix(drop)
         self.user_track_matrix.load()
         self.MF_users = self.user_track_matrix.MF_users
         self.MF_tracks = self.user_track_matrix.MF_tracks
@@ -23,7 +23,7 @@ class VanillaNearestUsers(BaseVanilla):
     def __init__(self, K = 1):
         super().__init__()
         self.K = K
-        self.NN = NearestNeighbors(n_neighbors=self.K + 1, algorithm='ball_tree')
+        self.NN = NearestNeighbors(n_neighbors=self.K + 1, algorithm='ball_tree', n_jobs=-1)
         self.NN.fit(self.MF_users)
 
     def get_nearest_users(self, user_id):
@@ -48,11 +48,15 @@ class VanillaNearestUsers(BaseVanilla):
 
 
 class VanillaNearestTracks(BaseVanilla):
-    def __init__(self, K = 1):
-        super().__init__()
-        self.K = K
-        self.NN = NearestNeighbors(n_neighbors=self.K + 1, algorithm='ball_tree')
+    def __init__(self, n_neighbors = 3, tracks_limit = None, drop=False):
+        super().__init__(drop)
+        self.n_neighbors = n_neighbors
+        self.tracks_limit = tracks_limit
+        self.NN = NearestNeighbors(n_neighbors=self.n_neighbors + 1, algorithm='brute', n_jobs=-1)
+        print("starting to fit neighborhood...")
+        st = time.time()
         self.NN.fit(self.MF_tracks.transpose())
+        print("> finish fitting model: {:.3} secs".format(time.time() - st))
 
     def get_nearest_tracks(self, track_id):
         """ gets a track and returns its K most nearest tracks in the latent space """
@@ -67,7 +71,8 @@ class VanillaNearestTracks(BaseVanilla):
         # sort the indices by the best score
         tracks_indices = [idx for _,idx in sorted(zip(tracks_scores, tracks_indices), reverse = True)]
         recommend = []
-        for track_id in tracks_indices[:10]:
+        limit = len(tracks_indices) if self.tracks_limit == None else self.tracks_limit
+        for track_id in tracks_indices[:limit]:
             a = time.time()
             print("getting nearest tracks")
             similar_tracks =  self.get_nearest_tracks(track_id)
