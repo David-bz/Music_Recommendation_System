@@ -2,13 +2,14 @@ from dataset.user_item_matrix import userTrackMatrix
 import pandas as pd
 import numpy as np
 from utils import generate_path
+from sklearn.neighbors import NearestNeighbors
 
 
 class MLDataset:
-    def __init__(self, verbose=True):
+    def __init__(self, verbose=True, drop=False):
         self.verbose = verbose
 
-        user_track_mat = userTrackMatrix(verbose=self.verbose)
+        user_track_mat = userTrackMatrix(verbose=self.verbose, drop=drop)
         user_track_mat.load()
         user_track_mat.data.load_scaled_dataset()
 
@@ -18,8 +19,6 @@ class MLDataset:
         self.users = self.user_track_mat.data.scaled_users
         self.orig_tracks = self.user_track_mat.tracks
         self.tracks = self.user_track_mat.data.scaled_tracks
-        self.loved = self.user_track_mat.loved
-        self.played = self.user_track_mat.played
         self.MF_users = self.user_track_mat.MF_users
         self.MF_tracks = self.user_track_mat.MF_tracks
         self.data = pd.DataFrame(columns=self.get_ml_dataset_columns())
@@ -121,6 +120,17 @@ class MLDataset:
 
         if dump:
             self.dump()
+
+    def get_nearest_users(self, user, n_neighbors):
+        NN = NearestNeighbors(n_neighbors=n_neighbors + 1, algorithm='ball_tree')
+        NN.fit(self.user_track_mat.MF_users)
+        user_vector = self.user_track_mat.MF_users[user].reshape(1, -1)
+        distance, index = NN.kneighbors(user_vector)
+        nearest_user_idx = list(index[0, 1:])
+        return nearest_user_idx
+
+    def build_dataset_for_user(self, user, n_neighbors, positive_tracks_per_user=200, positive_portion=0.3):
+        
 
 
 if __name__ == '__main__':

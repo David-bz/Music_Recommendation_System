@@ -42,6 +42,7 @@ class userTrackMatrix:
 
     def process_table_events(self, table, score_fun):
         # score_fun: a function (self * user_id * track_id) -> (score)
+        bucket_size = 0
         if self.verbose:
             bucket_size = len(table) // 100
 
@@ -143,23 +144,23 @@ class userTrackMatrix:
     def get_mf_score(self, user, track):
         return sum([self.MF_users[user, i] * self.MF_tracks[i, track] for i in range(self.n_components)])
 
-    def get_user_loved_tracks(self, user, drop=False):
+    def get_user_loved_tracks(self, user):
         # related_tracks contains all the tracks that this user loved
         tracks = list(self.loved[self.loved.user_id == user].track_id.values)
-        if drop:
+        if self.drop:
             tracks = [track for track in tracks if track not in self.drop_dict[str(user)]]
         return tracks
 
-    def get_user_played_tracks(self, user, drop=False):
+    def get_user_played_tracks(self, user):
         # related_tracks contains all the tracks that this user played
         tracks = list(self.played[self.played.user_id == user].track_id.values)
-        if drop:
+        if self.drop:
             tracks = [track for track in tracks if track not in self.drop_dict[str(user)]]
         return tracks
 
-    def get_user_related_tracks(self, user, drop=False):
+    def get_user_related_tracks(self, user):
         # related_tracks contains all the tracks that this user loved or played
-        return self.get_user_loved_tracks(user, drop) + self.get_user_played_tracks(user, drop)
+        return self.get_user_loved_tracks(user) + self.get_user_played_tracks(user)
 
     def evaluate_mf(self, samples=200):
         count = 0
