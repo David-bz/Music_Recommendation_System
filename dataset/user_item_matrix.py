@@ -140,6 +140,7 @@ class userTrackMatrix:
         if self.verbose:
             print('{} components reconstruction error {}'.format(n_components, model.reconstruction_err_))
             print('sparsity {}'.format(self.mat.nnz / (self.mat.shape[0] * self.mat.shape[1])))
+        return model.reconstruction_err_
 
     def get_mf_score(self, user, track):
         return sum([self.MF_users[user, i] * self.MF_tracks[i, track] for i in range(self.n_components)])
@@ -166,11 +167,12 @@ class userTrackMatrix:
         # when in drop mode, get the list for a certain user
         return self.drop_dict.get(str(user), []) if self.drop else []
 
-
-    def evaluate_mf(self, samples=200):
+    def evaluate_mf(self, users=None):
         count = 0
         sum = 0
-        for user in np.random.choice(self.shape[0], samples):
+        if users is None:
+            users = np.random.choice(self.shape[0], 200)
+        for user in users:
             # score[i] is the score of track_id == i
             scores = np.dot(self.MF_users[user, :], self.MF_tracks)
             # positions[i] is the i'th worst track by this user
@@ -190,23 +192,25 @@ class userTrackMatrix:
             user_score = avg_position / self.shape[1]
 
             if self.verbose:
-                print('user {}, score {}, avg position {}, {} related tracks'.format(
-                    user, user_score, int(avg_position), len(related_tracks)))
+                print('user {}, score {}, avg position {}, related tracks {}'.format(
+                    user, user_score, int(avg_position), related_tracks_len))
             sum += user_score
             count += 1
 
-        print('score {}'.format(sum / count))
+        score = sum / count
+        print('score {}'.format(score))
+        return score
 
 
 if __name__ == '__main__':
     user_track_matrix = userTrackMatrix(drop=True)
 
-    # create a trivial score function - for each event increase the score by 1
-    played_promotion_step = lambda obj, i, j: obj.mat[i, j] + 1
-    loveded_promotion_step = lambda obj, i, j: obj.mat[i, j] + 5
+    # create score functions - for each implicit / explicit relation increase the score by 1 or 5 respectively
+    implicit_promotion_step = lambda obj, i, j: obj.mat[i, j] + 1
+    explicit_promotion_step = lambda obj, i, j: obj.mat[i, j] + 5
 
-    user_track_matrix.process_loved_events(loveded_promotion_step)
-    user_track_matrix.process_played_events(played_promotion_step)
+    user_track_matrix.process_loved_events(explicit_promotion_step)
+    user_track_matrix.process_played_events(implicit_promotion_step)
     user_track_matrix.matrix_factorize()
     user_track_matrix.evaluate_mf()
     user_track_matrix.dump()
