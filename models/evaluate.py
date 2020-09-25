@@ -17,7 +17,7 @@ class Evaluate:
 
     def add_results(self, user, results_type, loved_score, played_score, related_score, dropped_score = np.nan):
         results = {
-            'loves': loved_score,
+            'loved': loved_score,
             'played_score': played_score,
             'related_score': related_score
         }
@@ -140,7 +140,10 @@ class Evaluate:
             recommended = self.model.predict(user)
 
             users.append((user, loved_tracks, played_tracks, related_tracks, dropped_tracks, recommended))
-            user_dict = {'loved_count': len(loved_tracks), 'played_count': len(played_tracks), 'dropped_tracks': len(dropped_tracks)}
+            user_dict = {'loved_count': len(loved_tracks),
+                         'played_count': len(played_tracks),
+                         'dropped_tracks': len(dropped_tracks),
+                         'top250': recommended[:250]}
             print(len(dropped_tracks))
             self.results['{}'.format(user)] = user_dict
             if self.verbose:

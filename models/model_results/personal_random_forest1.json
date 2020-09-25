@@ -1,1 +1,26 @@
-{"info": {"K": 250, "model": "personal_random_forest", "samples": 5}, "1913": {"loved_count": 23, "played_count": 200, "P@K": {"loves": 0.076, "played_score": 0.024, "related_score": 0.1}, "R@K": {"loves": 0.8260869565217391, "played_score": 0.135, "related_score": 0.2062780269058296}, "MAP": {"loves": 19494.608695652172, "played_score": 12496.62, "related_score": 13218.385650224216}}, "3945": {"loved_count": 5, "played_count": 200, "P@K": {"loves": 0.0, "played_score": 0.016, "related_score": 0.016}, "R@K": {"loves": 0.0, "played_score": 0.84, "related_score": 0.8195121951219512}, "MAP": {"loves": 1171.6, "played_score": 924.675, "related_score": 930.6975609756098}}, "1050": {"loved_count": 403, "played_count": 200, "P@K": {"loves": 0.004, "played_score": 0.004, "related_score": 0.004}, "R@K": {"loves": 0.004, "played_score": 0.01, "related_score": 0.012}, "MAP": {"loves": 10522.58064516129, "played_score": 37108.75, "related_score": 19340.54726368159}}, "574": {"loved_count": 60, "played_count": 200, "P@K": {"loves": 0.004, "played_score": 0.004, "related_score": 0.004}, "R@K": {"loves": 0.016666666666666666, "played_score": 0.005, "related_score": 0.008}, "MAP": {"loves": 13210.466666666667, "played_score": 20738.56, "related_score": 19001.30769230769}}, "2776": {"loved_count": 0, "played_count": 200, "P@K": {"loves": 0.0, "played_score": 0.0, "related_score": 0.0}, "R@K": {"loves": NaN, "played_score": 0.0, "related_score": 0.0}, "MAP": {"loves": NaN, "played_score": 18899.68, "related_score": 18899.68}}}
+{"info": {"K": 250, "model": "personal_random_forest", "samples": 5}, 
+
+"1913": {"loved_count": 23, "played_count": 200, 
+	"P@K": {"loves": 0.076, "played_score": 0.024, "related_score": 0.1}, 
+	"R@K": {"loves": 0.8260869565217391, "played_score": 0.135, "related_score": 0.2062780269058296}, 
+	"MAP": {"loves": 19494.608695652172, "played_score": 12496.62, "related_score": 13218.385650224216}}, 
+
+"3945": {"loved_count": 5, "played_count": 200, 
+	"P@K": {"loves": 0.0, "played_score": 0.016, "related_score": 0.016}, 
+	"R@K": {"loves": 0.0, "played_score": 0.84, "related_score": 0.8195121951219512}, 
+	"MAP": {"loves": 1171.6, "played_score": 924.675, "related_score": 930.6975609756098}}, 
+
+"1050": {"loved_count": 403, "played_count": 200, 
+	"P@K": {"loves": 0.004, "played_score": 0.004, "related_score": 0.004}, 
+	"R@K": {"loves": 0.004, "played_score": 0.01, "related_score": 0.012}, 
+	"MAP": {"loves": 10522.58064516129, "played_score": 37108.75, "related_score": 19340.54726368159}}, 
+
+"574": {"loved_count": 60, "played_count": 200, 
+	"P@K": {"loves": 0.004, "played_score": 0.004, "related_score": 0.004}, 
+	"R@K": {"loves": 0.016666666666666666, "played_score": 0.005, "related_score": 0.008}, 
+	"MAP": {"loves": 13210.466666666667, "played_score": 20738.56, "related_score": 19001.30769230769}}, 
+
+"2776": {"loved_count": 0, "played_count": 200, 
+	"P@K": {"loves": 0.0, "played_score": 0.0, "related_score": 0.0}, 
+	"R@K": {"loves": NaN, "played_score": 0.0, "related_score": 0.0}, 
+	"MAP": {"loves": NaN, "played_score": 18899.68, "related_score": 18899.68}}}
