@@ -4,15 +4,23 @@ import numpy as np
 import time
 
 class BaseVanilla:
-    def __init__(self, drop=False):
+    def __init__(self, drop=False, MF_users=None, MF_tracks=None):
         self.user_track_matrix = userTrackMatrix(drop)
         self.user_track_matrix.load()
-        self.MF_users = self.user_track_matrix.MF_users
-        self.MF_tracks = self.user_track_matrix.MF_tracks
+
+        if MF_users is not None:
+            self.MF_users = MF_users
+        else:
+            self.MF_users = self.user_track_matrix.MF_users
+
+        if MF_tracks is not None:
+            self.MF_tracks = MF_tracks
+        else:
+            self.MF_tracks = self.user_track_matrix.MF_tracks
 
 class Vanilla_MF(BaseVanilla):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, MF_users=None, MF_tracks=None):
+        super().__init__(MF_users=MF_users, MF_tracks=MF_tracks)
 
     def predict(self, user):
         scores = np.dot(self.MF_users[user, :], self.MF_tracks)
